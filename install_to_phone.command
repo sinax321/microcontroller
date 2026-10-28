@@ -46,7 +46,7 @@ fi
 if [ -z "$APK_PATH" ]; then
   echo "ℹ️  No pre-built APK found in directory."
   echo "Attempting to build APK with Capacitor & Gradle..."
-  npm run build && npx cap sync android
+  CAPACITOR=true npm run build && npx cap sync android
   if [ -f "./android/gradlew" ]; then
     (cd android && ./gradlew assembleDebug)
     if [ -f "./android/app/build/outputs/apk/debug/app-debug.apk" ]; then
