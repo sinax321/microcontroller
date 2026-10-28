@@ -2,14 +2,14 @@
   "short_name": "HomeGuard",
   "name": "HomeGuard — Smart Home Security & Monitoring",
   "description": "IoT qualifier monitoring dashboard for STM32 Blue Pill door security and temperature telemetry",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "theme_color": "#0B0F17",
   "background_color": "#0B0F17",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon-192.svg",
+      "src": "./icon-192.svg",
       "type": "image/svg+xml",
       "sizes": "192x192 512x512",
       "purpose": "any maskable"

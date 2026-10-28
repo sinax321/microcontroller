@@ -101,13 +101,28 @@ export class WebSerialTransport implements BluetoothTransport {
     this.keepReading = false;
     try {
       if (this.reader) {
-        await this.reader.cancel();
-        this.reader.releaseLock();
+        try {
+          await this.reader.cancel();
+        } catch {
+          // ignore
+        }
+        try {
+          this.reader.releaseLock();
+        } catch {
+          // ignore
+        }
         this.reader = null;
       }
       if (this.writer) {
-        await this.writer.close();
-        this.writer.releaseLock();
+        try {
+          await this.writer.close();
+        } catch {
+          try {
+            this.writer.releaseLock();
+          } catch {
+            // ignore
+          }
+        }
         this.writer = null;
       }
       if (this.port) {

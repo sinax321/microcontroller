@@ -4,9 +4,10 @@ import App from './App';
 import './index.css';
 
 // Register Service Worker for PWA
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
+    const swUrl = `${import.meta.env.BASE_URL}sw.js`;
+    navigator.serviceWorker.register(swUrl).catch((err) => {
       console.debug('Service Worker registration skipped:', err);
     });
   });

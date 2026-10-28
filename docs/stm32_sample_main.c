@@ -12,6 +12,7 @@
 
 #include "main.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -185,9 +186,45 @@ void Process_Incoming_Command(const char* json_str)
     {
         snprintf(response, sizeof(response),
                  "{\"type\":\"ack\",\"command\":\"PONG\",\"uptime\":%lu}\n",
-                 HAL_GetTick() / 1000);
+                 (unsigned long)(HAL_GetTick() / 1000));
         HAL_UART_Transmit(&huart1, (uint8_t*)response, strlen(response), 100);
     }
+    else if (strstr(json_str, "\"command\":\"SET_THRESHOLDS\"") != NULL)
+    {
+        const char* w_ptr = strstr(json_str, "\"warning\":");
+        const char* c_ptr = strstr(json_str, "\"critical\":");
+        if (w_ptr) g_warning_threshold = (float)atof(w_ptr + 10);
+        if (c_ptr) g_critical_threshold = (float)atof(c_ptr + 11);
+
+        snprintf(response, sizeof(response),
+                 "{\"type\":\"ack\",\"command\":\"SET_THRESHOLDS\",\"status\":\"UPDATED\",\"warning\":%.1f,\"critical\":%.1f}\n",
+                 g_warning_threshold, g_critical_threshold);
+        HAL_UART_Transmit(&huart1, (uint8_t*)response, strlen(response), 100);
+    }
+}
+
+/**
+  * @brief  Transmit RFID Access event JSON to dashboard over USART1
+  */
+void Send_Access_Event(const char* uid, const char* name, const char* id, bool granted)
+{
+    char buffer[192];
+    snprintf(buffer, sizeof(buffer),
+             "{\"type\":\"access\",\"uid\":\"%s\",\"memberName\":\"%s\",\"memberId\":\"%s\",\"result\":\"%s\"}\n",
+             uid, name ? name : "Unknown", id ? id : "N/A", granted ? "GRANTED" : "DENIED");
+    HAL_UART_Transmit(&huart1, (uint8_t*)buffer, strlen(buffer), 200);
+}
+
+/**
+  * @brief  Transmit autonomous thermal warning/critical alert packet
+  */
+void Send_Alert(const char* level, float temperature, float threshold)
+{
+    char buffer[160];
+    snprintf(buffer, sizeof(buffer),
+             "{\"type\":\"alert\",\"level\":\"%s\",\"temperature\":%.1f,\"threshold\":%.1f}\n",
+             level, temperature, threshold);
+    HAL_UART_Transmit(&huart1, (uint8_t*)buffer, strlen(buffer), 200);
 }
 
 /**

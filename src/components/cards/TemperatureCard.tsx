@@ -206,7 +206,10 @@ export const TemperatureCard: React.FC = () => {
                   color: '#F8FAFC',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
                 }}
-                formatter={(val: number) => [`${val.toFixed(1)} °C`, 'Temperature']}
+                formatter={(val: unknown) => [
+                  typeof val === 'number' ? `${val.toFixed(1)} °C` : `${Number(val || 0).toFixed(1)} °C`,
+                  'Temperature',
+                ]}
                 labelFormatter={(label) => `Time: ${label}`}
               />
 

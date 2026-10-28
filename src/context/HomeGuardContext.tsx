@@ -198,12 +198,34 @@ export const HomeGuardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [connection, setConnection] = useState(() => btService.getConnectionStatus());
   const [transportType, setTransportType] = useState<TransportType>(() => btService.getTransportType());
 
+  // Refs to avoid tearing down and rebuilding listeners every time state changes
+  const membersRef = useRef(members);
+  membersRef.current = members;
+
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
+  const telemetryRef = useRef(telemetry);
+  telemetryRef.current = telemetry;
+
   // Track alert level transition to avoid duplicate alerts while remaining in the same state
   const previousLevelRef = useRef<AlertLevel>('NORMAL');
   const [currentAlertLevel, setCurrentAlertLevel] = useState<AlertLevel>('NORMAL');
 
   // Door action pending timeout ref
   const pendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Helper to append alert avoiding exact duplicate text in short succession
+  const addAlertEntry = useCallback((alert: TemperatureAlert) => {
+    setAlerts((prev) => {
+      // Don't add duplicate active unacknowledged alert with same level & text
+      const duplicate = prev.find(
+        (a) => !a.acknowledged && a.level === alert.level && a.message === alert.message
+      );
+      if (duplicate) return prev;
+      return [alert, ...prev];
+    });
+  }, []);
 
   // Sync settings to localStorage
   useEffect(() => {
@@ -290,10 +312,11 @@ export const HomeGuardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       // Threshold transition logic
       const temp = data.temperature;
+      const currentSettings = settingsRef.current;
       let newLevel: AlertLevel = 'NORMAL';
-      if (temp >= settings.criticalThreshold) {
+      if (temp >= currentSettings.criticalThreshold) {
         newLevel = 'CRITICAL';
-      } else if (temp >= settings.warningThreshold) {
+      } else if (temp >= currentSettings.warningThreshold) {
         newLevel = 'WARNING';
       } else {
         newLevel = 'NORMAL';
@@ -304,28 +327,28 @@ export const HomeGuardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // Only create an alert entry if state transitions from safer to dangerous
       if (newLevel !== previousLevelRef.current) {
         if (newLevel === 'CRITICAL') {
-          if (settings.soundEnabled) playCriticalAlarmSound();
-          if (settings.vibrationEnabled) triggerVibration([200, 100, 200, 100, 400]);
+          if (currentSettings.soundEnabled) playCriticalAlarmSound();
+          if (currentSettings.vibrationEnabled) triggerVibration([200, 100, 200, 100, 400]);
           addAlertEntry({
             id: 'alt_' + Date.now(),
             level: 'CRITICAL',
             temperature: temp,
-            threshold: settings.criticalThreshold,
+            threshold: currentSettings.criticalThreshold,
             timestamp: new Date().toISOString(),
             acknowledged: false,
             message: `CRITICAL HIGH TEMPERATURE: ${temp}°C detected! Immediate inspection advised.`,
           });
         } else if (newLevel === 'WARNING' && previousLevelRef.current === 'NORMAL') {
-          if (settings.soundEnabled) playWarningSound();
-          if (settings.vibrationEnabled) triggerVibration([150, 80, 150]);
+          if (currentSettings.soundEnabled) playWarningSound();
+          if (currentSettings.vibrationEnabled) triggerVibration([150, 80, 150]);
           addAlertEntry({
             id: 'alt_' + Date.now(),
             level: 'WARNING',
             temperature: temp,
-            threshold: settings.warningThreshold,
+            threshold: currentSettings.warningThreshold,
             timestamp: new Date().toISOString(),
             acknowledged: false,
-            message: `Temperature safety warning: ${temp}°C exceeds safety threshold (${settings.warningThreshold}°C).`,
+            message: `Temperature safety warning: ${temp}°C exceeds safety threshold (${currentSettings.warningThreshold}°C).`,
           });
         }
         previousLevelRef.current = newLevel;
@@ -333,8 +356,12 @@ export const HomeGuardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
 
     const unsubAccess = btService.onAccessEvent((event) => {
+      const currentMembers = membersRef.current;
+      const currentSettings = settingsRef.current;
+      const currentTelemetry = telemetryRef.current;
+
       // Look up member by UID from our registered members list
-      const matchedMember = members.find(
+      const matchedMember = currentMembers.find(
         (m) => m.uid.replace(/[\s:]/g, '').toUpperCase() === event.uid.replace(/[\s:]/g, '').toUpperCase()
       );
 
@@ -355,16 +382,16 @@ export const HomeGuardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setAccessEvents((prev) => [enrichedEvent, ...prev]);
 
       if (isAuthorized) {
-        if (settings.soundEnabled) playAccessGrantedSound();
+        if (currentSettings.soundEnabled) playAccessGrantedSound();
         setDoorStatus('UNLOCKED');
       } else {
-        if (settings.soundEnabled) playAccessDeniedSound();
-        if (settings.vibrationEnabled) triggerVibration([300]);
+        if (currentSettings.soundEnabled) playAccessDeniedSound();
+        if (currentSettings.vibrationEnabled) triggerVibration([300]);
         // Add unauthorized entry attempt to alerts
         addAlertEntry({
           id: 'alt_auth_' + Date.now(),
           level: 'WARNING',
-          temperature: telemetry.temperature,
+          temperature: currentTelemetry.temperature,
           threshold: 0,
           timestamp: new Date().toISOString(),
           acknowledged: false,
@@ -394,19 +421,7 @@ export const HomeGuardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       unsubAccess();
       unsubAlert();
     };
-  }, [btService, members, settings, telemetry.temperature]);
-
-  // Helper to append alert avoiding exact duplicate text in short succession
-  const addAlertEntry = (alert: TemperatureAlert) => {
-    setAlerts((prev) => {
-      // Don't add duplicate active unacknowledged alert with same level & text
-      const duplicate = prev.find(
-        (a) => !a.acknowledged && a.level === alert.level && a.message === alert.message
-      );
-      if (duplicate) return prev;
-      return [alert, ...prev];
-    });
-  };
+  }, [btService, addAlertEntry]);
 
   // Connection controls
   const connect = useCallback(async () => {

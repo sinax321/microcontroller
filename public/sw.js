@@ -1,10 +1,10 @@
 // HomeGuard Service Worker for PWA offline capabilities
 const CACHE_NAME = 'homeguard-v1';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.svg',
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-192.svg',
 ];
 
 self.addEventListener('install', (event) => {

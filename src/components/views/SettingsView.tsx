@@ -632,7 +632,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <li>Orange (PWM) &rarr; STM32 PA0 (TIM2_CH1)</li>
                 <li>Frequency: 50Hz (20ms period)</li>
                 <li>0° (Locked): 1.0ms pulse</li>
-                <li>90° (Unlocked): 2.0ms pulse</li>
+                <li>90° (Unlocked): 1.5ms pulse (or 180° = 2.0ms)</li>
               </ul>
             </div>
 

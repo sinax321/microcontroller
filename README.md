@@ -139,8 +139,8 @@ HomeGuard communicates with the STM32 Blue Pill over standard UART using **newli
 ## 6. Physical Hardware Integration & Pinout
 
 For full circuit schematics, HAL C reference code, and peripheral configurations, see:
-- [`docs/STM32_FIRMWARE_GUIDE.md`](file:///Users/karthikkrishna/Downloads/micro%20controller/docs/STM32_FIRMWARE_GUIDE.md)
-- [`docs/stm32_sample_main.c`](file:///Users/karthikkrishna/Downloads/micro%20controller/docs/stm32_sample_main.c)
+- [`docs/STM32_FIRMWARE_GUIDE.md`](./docs/STM32_FIRMWARE_GUIDE.md)
+- [`docs/stm32_sample_main.c`](./docs/stm32_sample_main.c)
 
 ### Hardware Interconnect Summary:
 | Peripheral | STM32 Pin | Function |

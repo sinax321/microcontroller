@@ -66,6 +66,8 @@ export class WebBleTransport implements BluetoothTransport {
   private onStatusChangeCallback?: (state: ConnectionState, detail?: string) => void;
   private decoder = new TextDecoder('utf-8');
   private encoder = new TextEncoder();
+  private boundHandleDisconnect = () => this.handleDisconnect();
+  private boundHandleCharacteristicValueChanged = (event: Event) => this.handleCharacteristicValueChanged(event);
 
   private serviceUuid: string;
   private txUuid: string;
@@ -146,7 +148,7 @@ export class WebBleTransport implements BluetoothTransport {
       });
 
       this.device = device;
-      this.device.addEventListener('gattserverdisconnected', this.handleDisconnect.bind(this));
+      this.device.addEventListener('gattserverdisconnected', this.boundHandleDisconnect);
 
       this.notifyStatus('CONNECTING', `Connecting to GATT server on ${device.name || 'device'}...`);
       const server = await device.gatt!.connect();
@@ -200,7 +202,7 @@ export class WebBleTransport implements BluetoothTransport {
       await this.txCharacteristic.startNotifications();
       this.txCharacteristic.addEventListener(
         'characteristicvaluechanged',
-        this.handleCharacteristicValueChanged.bind(this)
+        this.boundHandleCharacteristicValueChanged
       );
 
       this.notifyStatus('CONNECTED', `Connected via BLE to ${device.name || 'STM32 Peripheral'}`);
@@ -217,8 +219,30 @@ export class WebBleTransport implements BluetoothTransport {
   }
 
   public async disconnect(): Promise<void> {
+    if (this.txCharacteristic) {
+      try {
+        this.txCharacteristic.removeEventListener(
+          'characteristicvaluechanged',
+          this.boundHandleCharacteristicValueChanged
+        );
+        await this.txCharacteristic.stopNotifications().catch(() => {});
+      } catch {
+        // ignore
+      }
+    }
+    if (this.device) {
+      try {
+        this.device.removeEventListener('gattserverdisconnected', this.boundHandleDisconnect);
+      } catch {
+        // ignore
+      }
+    }
     if (this.server && this.server.connected) {
-      this.server.disconnect();
+      try {
+        this.server.disconnect();
+      } catch {
+        // ignore
+      }
     }
     this.server = null;
     this.device = null;
